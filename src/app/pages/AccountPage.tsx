@@ -1,6 +1,33 @@
 import { User, Mail, BookOpen, Shield } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { getAccount, patchAccount } from '../../lib/api';
 
 export function AccountPage() {
+  const [profile, setProfile] = useState<any>(null);
+  const [error, setError] = useState('');
+
+  const load = () =>
+    getAccount()
+      .then((response) => setProfile(response.profile))
+      .catch((err) => setError(err.message));
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const toggleSetting = async (setting: string) => {
+    if (!profile) return;
+    const exists = profile.settings.includes(setting);
+    const settings = exists
+      ? profile.settings.filter((item: string) => item !== setting)
+      : [...profile.settings, setting];
+    await patchAccount(settings);
+    await load();
+  };
+
+  if (error) return <div className="px-8 py-8">{error}</div>;
+  if (!profile) return <div className="px-8 py-8">Loading account...</div>;
+
   return (
     <>
       <header className="px-8 py-6">
@@ -36,19 +63,19 @@ export function AccountPage() {
             </div>
             <div>
               <h2 className="text-2xl font-bold" style={{ color: 'var(--dashboard-text-primary)' }}>
-                Student User
+                {profile.name}
               </h2>
               <p className="text-base" style={{ color: 'var(--dashboard-text-secondary)' }}>
-                student@university.edu
+                {profile.email}
               </p>
             </div>
           </div>
 
           <div className="grid grid-cols-3 gap-4">
             {[
-              { icon: BookOpen, label: 'Enrolled Courses', value: '4' },
-              { icon: Mail, label: 'Unread Messages', value: '2' },
-              { icon: Shield, label: 'Account Status', value: 'Active' },
+              { icon: BookOpen, label: 'Enrolled Courses', value: String(profile.enrolledCourses) },
+              { icon: Mail, label: 'Unread Messages', value: String(profile.unreadMessages) },
+              { icon: Shield, label: 'Account Status', value: profile.accountStatus },
             ].map((item) => (
               <div
                 key={item.label}
@@ -84,12 +111,15 @@ export function AccountPage() {
                 key={setting}
                 className="w-full flex items-center justify-between p-4 rounded-lg text-left transition-all focus:outline-none focus:ring-2 hover:shadow-sm"
                 style={{
-                  backgroundColor: 'var(--dashboard-card-bg)',
-                  color: 'var(--dashboard-text-primary)'
+                  backgroundColor: profile.settings.includes(setting) ? 'var(--dashboard-info)' : 'var(--dashboard-card-bg)',
+                  color: profile.settings.includes(setting) ? '#ffffff' : 'var(--dashboard-text-primary)'
                 }}
+                onClick={() => toggleSetting(setting)}
               >
                 <span>{setting}</span>
-                <span style={{ color: 'var(--dashboard-text-secondary)' }}>→</span>
+                <span style={{ color: profile.settings.includes(setting) ? '#ffffff' : 'var(--dashboard-text-secondary)' }}>
+                  {profile.settings.includes(setting) ? 'Enabled' : '→'}
+                </span>
               </button>
             ))}
           </div>

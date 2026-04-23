@@ -1,13 +1,19 @@
 import { Users, MessageSquare } from 'lucide-react';
-
-const groups = [
-  { name: 'Algebra Study Group', members: 8, course: 'PHSC 114', lastActive: '2 hours ago', color: 'var(--dashboard-accent-red)' },
-  { name: 'CS Foundations Lab Team', members: 4, course: 'C S-4063-001', lastActive: '5 hours ago', color: 'var(--dashboard-accent-green)' },
-  { name: 'Data Structures Review', members: 12, course: 'CS-3345-002', lastActive: '1 day ago', color: 'var(--dashboard-info)' },
-  { name: 'Database Project Team', members: 3, course: 'CS-4347-001', lastActive: '3 days ago', color: '#8b5cf6' },
-];
+import { useEffect, useState } from 'react';
+import { getGroups } from '../../lib/api';
 
 export function GroupsPage() {
+  const [groups, setGroups] = useState<any[]>([]);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    getGroups()
+      .then((response) => setGroups(response.groups))
+      .catch((err) => setError(err.message));
+  }, []);
+
+  if (error) return <div className="px-8 py-8">{error}</div>;
+
   return (
     <>
       <header className="px-8 py-6">

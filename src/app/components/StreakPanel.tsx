@@ -1,6 +1,6 @@
 import { Flame, ChevronDown, Plus, CheckCircle2, Circle, FileText } from 'lucide-react';
 
-export function StreakPanel() {
+export function StreakPanel({ onCreateEntry }: { onCreateEntry?: (date?: string) => void }) {
   const weekProgress = [
     { day: 'Mon', complete: true },
     { day: 'Tue', complete: true },
@@ -216,6 +216,7 @@ export function StreakPanel() {
 
           {/* New Task Button */}
           <button 
+            onClick={() => onCreateEntry?.()}
             className="w-full mt-4 py-3 rounded-lg flex items-center justify-center gap-2 font-medium transition-all focus:outline-none focus:ring-2"
             style={{ 
               backgroundColor: 'var(--dashboard-info)',

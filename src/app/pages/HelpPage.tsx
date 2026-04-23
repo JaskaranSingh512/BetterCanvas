@@ -1,13 +1,21 @@
 import { HelpCircle, BookOpen, MessageSquare, FileText } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { getHelpTopics } from '../../lib/api';
 
-const helpTopics = [
-  { icon: BookOpen, title: 'Getting Started', description: 'Learn the basics of navigating your dashboard and courses', color: 'var(--dashboard-info)' },
-  { icon: FileText, title: 'Submitting Assignments', description: 'How to upload and submit your coursework on time', color: 'var(--dashboard-success)' },
-  { icon: MessageSquare, title: 'Messaging & Discussions', description: 'Communicate with instructors and classmates', color: 'var(--dashboard-warning)' },
-  { icon: HelpCircle, title: 'Technical Support', description: 'Troubleshoot common issues and contact support', color: 'var(--dashboard-accent-red)' },
-];
+const iconMap = [BookOpen, FileText, MessageSquare, HelpCircle];
 
 export function HelpPage() {
+  const [helpTopics, setHelpTopics] = useState<any[]>([]);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    getHelpTopics()
+      .then((response) => setHelpTopics(response.topics))
+      .catch((err) => setError(err.message));
+  }, []);
+
+  if (error) return <div className="px-8 py-8">{error}</div>;
+
   return (
     <>
       <header className="px-8 py-6">
@@ -27,7 +35,9 @@ export function HelpPage() {
 
       <div className="px-8 py-4">
         <div className="grid grid-cols-2 gap-5">
-          {helpTopics.map((topic) => (
+          {helpTopics.map((topic, index) => {
+            const Icon = iconMap[index % iconMap.length];
+            return (
             <button
               key={topic.title}
               className="p-6 rounded-lg text-left transition-all focus:outline-none focus:ring-2 hover:shadow-md"
@@ -40,7 +50,7 @@ export function HelpPage() {
                 className="w-12 h-12 rounded-lg flex items-center justify-center mb-4"
                 style={{ backgroundColor: topic.color }}
               >
-                <topic.icon className="w-6 h-6 text-white" />
+                <Icon className="w-6 h-6 text-white" />
               </div>
               <h3 className="font-semibold text-lg mb-2" style={{ color: 'var(--dashboard-text-primary)' }}>
                 {topic.title}
@@ -49,7 +59,7 @@ export function HelpPage() {
                 {topic.description}
               </p>
             </button>
-          ))}
+          )})}
         </div>
 
         {/* Contact */}

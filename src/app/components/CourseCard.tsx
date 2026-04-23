@@ -1,7 +1,8 @@
-import { MessageSquare, Bell, FileText, ChevronRight } from 'lucide-react';
+import { MessageSquare, Bell, FileText, ChevronRight, Pin } from 'lucide-react';
 import { useState } from 'react';
 
 interface CourseCardProps {
+  id?: string;
   courseName: string;
   courseCode: string;
   thumbnail: 'red' | 'green' | 'blue' | 'purple';
@@ -13,16 +14,21 @@ interface CourseCardProps {
     preview: string;
     date: string;
   };
+  focused?: boolean;
+  onSetFocused?: (id?: string) => void;
 }
 
 export function CourseCard({
+  id,
   courseName,
   courseCode,
   thumbnail,
   announcements = 0,
   discussions = 0,
   files = 0,
-  latestAnnouncement
+  latestAnnouncement,
+  focused = false,
+  onSetFocused
 }: CourseCardProps) {
   const [showAnnouncementPreview, setShowAnnouncementPreview] = useState(false);
   const [showDiscussionPreview, setShowDiscussionPreview] = useState(false);
@@ -70,6 +76,14 @@ export function CourseCard({
         >
           {courseCode}
         </div>
+        <button
+          onClick={() => onSetFocused?.(id)}
+          className="absolute top-3 right-3 w-8 h-8 rounded-md flex items-center justify-center focus:outline-none focus:ring-2"
+          style={{ backgroundColor: focused ? 'var(--dashboard-warning)' : 'rgba(255,255,255,0.8)', color: focused ? '#ffffff' : 'var(--dashboard-text-primary)' }}
+          aria-label="Set as focused course"
+        >
+          <Pin className="w-4 h-4" />
+        </button>
       </div>
 
       {/* Content */}

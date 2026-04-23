@@ -1,7 +1,32 @@
 import { TaskCard } from '../components/TaskCard';
 import { CalendarWidget } from '../components/CalendarWidget';
+import { useEffect, useState } from 'react';
+import { useOutletContext } from 'react-router';
+import { getCalendarTasks, patchTask } from '../../lib/api';
 
 export function CalendarPage() {
+  const { openCreateEntry, reloadKey } = useOutletContext<{ openCreateEntry: (date?: string) => void; reloadKey: number }>();
+  const [data, setData] = useState<any>(null);
+  const [error, setError] = useState('');
+
+  const load = () =>
+    getCalendarTasks()
+      .then(setData)
+      .catch((err) => setError(err.message));
+
+  useEffect(() => {
+    load();
+  }, [reloadKey]);
+
+  const onToggleTask = async (checked: boolean, id?: string) => {
+    if (!id) return;
+    await patchTask(id, checked);
+    await load();
+  };
+
+  if (error) return <div className="px-8 py-8">{error}</div>;
+  if (!data) return <div className="px-8 py-8">Loading calendar...</div>;
+
   return (
     <>
       <header className="px-8 py-6">
@@ -23,101 +48,25 @@ export function CalendarPage() {
         <div className="grid grid-cols-[1fr,320px] gap-8">
           {/* Schedule */}
           <div className="space-y-8">
-            {/* Yesterday */}
-            <section>
-              <h3
-                className="text-xl font-semibold mb-4 px-2"
-                style={{ color: 'var(--dashboard-text-primary)' }}
-              >
-                Yesterday, February 14
-              </h3>
-              <div
-                className="text-center py-12 rounded-lg"
-                style={{
-                  backgroundColor: 'var(--dashboard-hover)',
-                  color: 'var(--dashboard-text-secondary)'
-                }}
-              >
-                <p className="text-lg">Nothing Planned</p>
+            {data.groups.length === 0 ? (
+              <div className="text-center py-12 rounded-lg" style={{ backgroundColor: 'var(--dashboard-hover)', color: 'var(--dashboard-text-secondary)' }}>
+                <p className="text-lg">No entries yet. Click + to add one.</p>
               </div>
-            </section>
-
-            {/* Today */}
-            <section>
-              <div className="mb-4 px-2">
-                <h3
-                  className="text-xl font-semibold"
-                  style={{ color: 'var(--dashboard-text-primary)' }}
-                >
-                  Today
+            ) : data.groups.map((group: any) => (
+              <section key={group.dateKey}>
+                <h3 className="text-xl font-semibold mb-4 px-2" style={{ color: 'var(--dashboard-text-primary)' }}>
+                  {group.dateLabel}
                 </h3>
-                <p
-                  className="text-base"
-                  style={{ color: 'var(--dashboard-text-secondary)' }}
-                >
-                  February 15
-                </p>
-              </div>
-              <TaskCard
-                courseCode="C S-4063-001"
-                courseName="C S-4063-001 - SPRING 2026 ASSIGNMENT"
-                taskTitle="Project Proposal"
-                taskType="assignment"
-                points={10}
-                dueTime="11:59 PM"
-                checked={true}
-                thumbnail="green"
-              />
-            </section>
-
-            {/* Tomorrow */}
-            <section>
-              <h3
-                className="text-xl font-semibold mb-4 px-2"
-                style={{ color: 'var(--dashboard-text-primary)' }}
-              >
-                Tomorrow, February 16
-              </h3>
-              <div className="space-y-4">
-                <TaskCard
-                  courseCode=""
-                  courseName="APPLIED MODERN ALGEBRA - SPRING 2026 CALENDAR EVENT"
-                  taskTitle="Applied Modern Algebra Lecture"
-                  taskSubtitle="PHSC 114"
-                  taskType="calendar"
-                  time="9:00 AM to 9:50 AM"
-                  checked={false}
-                  thumbnail="red"
-                  thumbnailLabel="APPLIED MODERN ALGEBRA - SPRING 2026"
-                />
-                <TaskCard
-                  courseCode=""
-                  courseName="APPLIED MODERN ALGEBRA - SPRING 2026 CALENDAR EVENT"
-                  taskTitle="Applied Modern Algebra Office Hours"
-                  taskSubtitle="PHSC 1121"
-                  taskType="calendar"
-                  time="10:00 AM to 11:00 AM"
-                  checked={false}
-                  thumbnail="red"
-                  thumbnailLabel="APPLIED MODERN ALGEBRA - SPRING 2026"
-                />
-                <TaskCard
-                  courseCode=""
-                  courseName="APPLIED MODERN ALGEBRA - SPRING 2026 ASSIGNMENT"
-                  taskTitle="HW 03"
-                  taskType="assignment"
-                  points={5}
-                  checked={true}
-                  thumbnail="red"
-                  thumbnailLabel=""
-                />
-              </div>
-            </section>
+                <div className="space-y-4">
+                  {group.tasks.map((task: any) => <TaskCard key={task._id} {...task} id={task._id} onCheckedChange={onToggleTask} />)}
+                </div>
+              </section>
+            ))}
           </div>
 
           {/* Sidebar Calendar */}
           <aside className="sticky top-0">
-            <CalendarWidget />
+            <CalendarWidget taskDates={data.taskDates || []} onDateClick={openCreateEntry} />
           </aside>
         </div>
       </div>

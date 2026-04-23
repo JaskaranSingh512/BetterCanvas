@@ -1,17 +1,34 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useMemo, useState } from 'react';
 
-export function CalendarWidget() {
+export function CalendarWidget({
+  taskDates = [],
+  onDateClick,
+}: {
+  taskDates?: string[];
+  onDateClick?: (date: string) => void;
+}) {
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const dates = [
-    [null, null, null, null, 1, 2, 3],
-    [4, 5, 6, 7, 8, 9, 10],
-    [11, 12, 13, 14, 15, 16, 17],
-    [18, 19, 20, 21, 22, 23, 24],
-    [25, 26, 27, 28, 29, null, null]
-  ];
+  const [monthDate, setMonthDate] = useState(new Date());
+  const todayString = new Date().toISOString().slice(0, 10);
 
-  const today = 15;
-  const datesWithTasks = [15, 16, 20];
+  const { dates, monthLabel, monthIndex, year } = useMemo(() => {
+    const yearValue = monthDate.getFullYear();
+    const monthValue = monthDate.getMonth();
+    const first = new Date(yearValue, monthValue, 1);
+    const offset = first.getDay();
+    const daysInMonth = new Date(yearValue, monthValue + 1, 0).getDate();
+    const flat = [];
+    for (let i = 0; i < offset; i += 1) flat.push(null);
+    for (let day = 1; day <= daysInMonth; day += 1) flat.push(day);
+    while (flat.length % 7 !== 0) flat.push(null);
+    return {
+      dates: flat,
+      monthLabel: monthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+      monthIndex: monthValue,
+      year: yearValue,
+    };
+  }, [monthDate]);
 
   return (
     <div 
@@ -24,10 +41,11 @@ export function CalendarWidget() {
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold text-base" style={{ color: 'var(--dashboard-text-primary)' }}>
-          February 2026
+          {monthLabel}
         </h3>
         <div className="flex gap-1">
           <button 
+            onClick={() => setMonthDate(new Date(year, monthIndex - 1, 1))}
             className="w-8 h-8 flex items-center justify-center rounded hover:opacity-80 transition-opacity focus:outline-none focus:ring-2"
             style={{ backgroundColor: 'var(--dashboard-hover)' }}
             aria-label="Previous month"
@@ -35,6 +53,7 @@ export function CalendarWidget() {
             <ChevronLeft className="w-4 h-4" style={{ color: 'var(--dashboard-text-primary)' }} />
           </button>
           <button 
+            onClick={() => setMonthDate(new Date(year, monthIndex + 1, 1))}
             className="w-8 h-8 flex items-center justify-center rounded hover:opacity-80 transition-opacity focus:outline-none focus:ring-2"
             style={{ backgroundColor: 'var(--dashboard-hover)' }}
             aria-label="Next month"
@@ -59,18 +78,22 @@ export function CalendarWidget() {
 
       {/* Calendar grid */}
       <div className="grid grid-cols-7 gap-1">
-        {dates.flat().map((date, index) => (
+        {dates.map((date, index) => {
+          const dateString = date === null ? '' : `${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(date).padStart(2, '0')}`;
+          const hasTask = !!date && taskDates.includes(dateString);
+          const isToday = dateString === todayString;
+          return (
           <button
             key={index}
             disabled={date === null}
             className="aspect-square flex flex-col items-center justify-center rounded text-sm transition-all focus:outline-none focus:ring-2 relative"
             style={{
-              backgroundColor: date === today 
+              backgroundColor: isToday 
                 ? 'var(--dashboard-info)' 
-                : date && datesWithTasks.includes(date)
+                : hasTask
                 ? 'var(--dashboard-hover)'
                 : 'transparent',
-              color: date === today 
+              color: isToday 
                 ? '#ffffff' 
                 : date 
                 ? 'var(--dashboard-text-primary)' 
@@ -78,29 +101,30 @@ export function CalendarWidget() {
               cursor: date ? 'pointer' : 'default'
             }}
             onMouseEnter={(e) => {
-              if (date && date !== today) {
+              if (date && !isToday) {
                 e.currentTarget.style.backgroundColor = 'var(--dashboard-hover)';
               }
             }}
             onMouseLeave={(e) => {
-              if (date && date !== today && !datesWithTasks.includes(date)) {
+              if (date && !isToday && !hasTask) {
                 e.currentTarget.style.backgroundColor = 'transparent';
-              } else if (date && datesWithTasks.includes(date) && date !== today) {
+              } else if (date && hasTask && !isToday) {
                 e.currentTarget.style.backgroundColor = 'var(--dashboard-hover)';
               }
             }}
-            aria-label={date ? `February ${date}, 2026` : undefined}
-            aria-current={date === today ? 'date' : undefined}
+            aria-label={date ? new Date(`${dateString}T00:00:00`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : undefined}
+            aria-current={isToday ? 'date' : undefined}
+            onClick={() => dateString && onDateClick?.(dateString)}
           >
             {date}
-            {date && datesWithTasks.includes(date) && date !== today && (
+            {hasTask && !isToday && (
               <div 
                 className="absolute bottom-1 w-1 h-1 rounded-full"
                 style={{ backgroundColor: 'var(--dashboard-info)' }}
               ></div>
             )}
           </button>
-        ))}
+        )})}
       </div>
 
       {/* Legend */}

@@ -2,6 +2,7 @@ import { Check, FileText, Calendar as CalendarIcon, Info } from 'lucide-react';
 import { useState } from 'react';
 
 interface TaskCardProps {
+  id?: string;
   courseCode: string;
   courseName: string;
   taskTitle: string;
@@ -13,9 +14,11 @@ interface TaskCardProps {
   thumbnail?: 'red' | 'green';
   taskSubtitle?: string;
   thumbnailLabel?: string;
+  onCheckedChange?: (checked: boolean, id?: string) => void;
 }
 
 export function TaskCard({
+  id,
   courseCode,
   courseName,
   taskTitle,
@@ -26,7 +29,8 @@ export function TaskCard({
   checked = false,
   thumbnail = 'red',
   taskSubtitle,
-  thumbnailLabel
+  thumbnailLabel,
+  onCheckedChange
 }: TaskCardProps) {
   const [showTooltip, setShowTooltip] = useState(false);
   
@@ -75,6 +79,7 @@ export function TaskCard({
             backgroundColor: checked ? 'var(--dashboard-success)' : 'transparent',
             border: checked ? 'none' : '2px solid var(--dashboard-border)',
           }}
+          onClick={() => onCheckedChange?.(!checked, id)}
         >
           {checked && <Check className="w-6 h-6 text-white" strokeWidth={3} />}
         </button>

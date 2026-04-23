@@ -1,10 +1,13 @@
 import { Plus, Calendar, Bell, MoreVertical, Moon, Sun } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router';
+import { logout } from '../../lib/api';
 
-export function TopNav() {
+export function TopNav({ onCreateEntry }: { onCreateEntry?: (date?: string) => void }) {
   const [darkMode, setDarkMode] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
 
   const toggleDarkMode = () => {
     setDarkMode(!darkMode);
@@ -36,6 +39,11 @@ export function TopNav() {
     };
   }, [showNotifications]);
 
+  const onLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
   return (
     <div 
       className="flex items-center justify-between px-6 py-3 transition-colors duration-200"
@@ -58,6 +66,7 @@ export function TopNav() {
         </button>
         
         <button 
+          onClick={() => onCreateEntry?.()}
           className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-all focus:outline-none focus:ring-2"
           style={{ 
             backgroundColor: 'var(--dashboard-hover)',
@@ -69,6 +78,7 @@ export function TopNav() {
         </button>
         
         <button 
+          onClick={() => navigate('/calendar')}
           className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-all focus:outline-none focus:ring-2"
           style={{ 
             backgroundColor: 'var(--dashboard-hover)',
@@ -384,12 +394,13 @@ export function TopNav() {
         </div>
 
         <button 
+          onClick={onLogout}
           className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-all focus:outline-none focus:ring-2"
           style={{ 
             backgroundColor: 'var(--dashboard-hover)',
             color: 'var(--dashboard-text-primary)'
           }}
-          aria-label="More options"
+          aria-label="Log out"
         >
           <MoreVertical className="w-5 h-5" />
         </button>
