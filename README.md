@@ -66,10 +66,9 @@ On macOS/Linux:
 cp .env.example .env
 cp server/.env.example server/.env
 ```
-<div style="position: relative; padding-bottom: 59.4059405940594%; height: 0;"><iframe src="https://www.loom.com/embed/700af9e8e2514f5194d1bb44ac3e85ed" frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></iframe></div>
 
-
-
+## DEMO
+- `https://www.loom.com/share/700af9e8e2514f5194d1bb44ac3e85ed`
 
 
 ## Environment Variables
