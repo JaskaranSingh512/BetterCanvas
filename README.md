@@ -117,16 +117,3 @@ Notes:
 Demo login:
 - Email: `student@university.edu`
 - Password: `password123`
-
-## Smoke Test
-
-With backend running:
-
-```bash
-npm --prefix server run smoke
-```
-
-## requirements.txt Note
-
-This repo is a Node.js project. A `requirements.txt` file is included only as a placeholder, and there are no Python dependencies required to run the app.
-  
