@@ -66,7 +66,7 @@ On macOS/Linux:
 cp .env.example .env
 cp server/.env.example server/.env
 ```
-
+https://www.loom.com/share/700af9e8e2514f5194d1bb44ac3e85ed
 ## Environment Variables
 
 Frontend (`.env`):
