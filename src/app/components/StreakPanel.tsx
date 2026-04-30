@@ -1,6 +1,79 @@
-import { Flame, ChevronDown, Plus, CheckCircle2, Circle, FileText } from 'lucide-react';
+import React from 'react';
+import { Flame, ChevronDown, Plus, CheckCircle2, Circle, FileText, Calendar } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { getCalendarTasks } from '../../lib/api';
 
-export function StreakPanel({ onCreateEntry }: { onCreateEntry?: (date?: string) => void }) {
+type CalendarTask = {
+  _id: string;
+  courseCode?: string;
+  courseName: string;
+  taskTitle: string;
+  taskType: 'assignment' | 'calendar';
+  points?: number;
+  dueTime?: string;
+  time?: string;
+  checked?: boolean;
+  thumbnail?: string;
+  eventDate: string;
+};
+
+function pad2(n: number) {
+  return String(n).padStart(2, '0');
+}
+
+function toYMD(d: Date) {
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+function addDaysYMD(ymd: string, days: number) {
+  // Parse as local date parts to avoid UTC offset surprises.
+  const [y, m, d] = ymd.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  date.setDate(date.getDate() + days);
+  return toYMD(date);
+}
+
+function formatShortDate(ymd: string) {
+  const [y, m, d] = ymd.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function thumbnailColor(thumbnail?: string) {
+  switch (thumbnail) {
+    case 'red':
+      return 'var(--dashboard-accent-red)';
+    case 'green':
+      return 'var(--dashboard-accent-green)';
+    case 'blue':
+      return 'var(--dashboard-info)';
+    case 'purple':
+      return '#8b5cf6';
+    default:
+      return 'var(--dashboard-accent-red)';
+  }
+}
+
+function courseLabel(task: CalendarTask) {
+  if (task.courseCode?.trim()) return task.courseCode.trim();
+  const name = task.courseName || '';
+  const dash = name.indexOf(' - ');
+  if (dash > 0) return name.slice(0, dash).trim();
+  return name.slice(0, 24) || 'Course';
+}
+
+const DUE_SOON_DAYS = 14;
+const MAX_ITEMS = 6;
+
+export function StreakPanel({
+  onCreateEntry,
+  reloadKey = 0,
+}: {
+  onCreateEntry?: (date?: string) => void;
+  reloadKey?: number;
+}) {
+  const [tasks, setTasks] = useState<CalendarTask[]>([]);
+
   const weekProgress = [
     { day: 'Mon', complete: true },
     { day: 'Tue', complete: true },
@@ -11,12 +84,61 @@ export function StreakPanel({ onCreateEntry }: { onCreateEntry?: (date?: string)
     { day: 'Sun', complete: false },
   ];
 
+  useEffect(() => {
+    // Keep the side panel in sync after new entries are created.
+    getCalendarTasks()
+      .then((data) => {
+        const flat: CalendarTask[] = [];
+        for (const group of data.groups || []) {
+          for (const task of group.tasks || []) {
+            flat.push(task);
+          }
+        }
+        setTasks(flat);
+      })
+      .catch(() => setTasks([]));
+  }, [reloadKey]);
+
+  const dueSoonItems = useMemo(() => {
+    const today = toYMD(new Date());
+    const end = addDaysYMD(today, DUE_SOON_DAYS);
+    // "Due soon" = incomplete assignments + scheduled events in window.
+    const upcoming = tasks.filter((task) => {
+      if (!task.eventDate) return false;
+      if (task.eventDate < today || task.eventDate > end) return false;
+      if (task.taskType === 'assignment') return !task.checked;
+      return task.taskType === 'calendar';
+    });
+    upcoming.sort((a, b) => {
+      if (a.eventDate !== b.eventDate) return a.eventDate.localeCompare(b.eventDate);
+      return (a.taskTitle || '').localeCompare(b.taskTitle || '');
+    });
+    return upcoming.slice(0, MAX_ITEMS);
+  }, [tasks]);
+
+  const assignmentWindow = useMemo(() => {
+    const today = toYMD(new Date());
+    const end = addDaysYMD(today, DUE_SOON_DAYS);
+    // Progress ring only tracks assignments, not calendar-only events.
+    return tasks.filter(
+      (t) => t.taskType === 'assignment' && t.eventDate >= today && t.eventDate <= end
+    );
+  }, [tasks]);
+
+  const completedInWindow = assignmentWindow.filter((t) => t.checked).length;
+  const totalInWindow = assignmentWindow.length;
+  const remainingInWindow = totalInWindow - completedInWindow;
+  const percent =
+    totalInWindow > 0 ? Math.round((completedInWindow / totalInWindow) * 100) : 0;
+  const circumference = 2 * Math.PI * 80;
+  const dashOffset = circumference - (percent / 100) * circumference;
+
   return (
-    <div 
+    <div
       className="w-[360px] flex flex-col transition-colors duration-200 overflow-y-auto"
-      style={{ 
+      style={{
         borderLeft: `1px solid var(--dashboard-border)`,
-        backgroundColor: 'var(--dashboard-card-bg)'
+        backgroundColor: 'var(--dashboard-card-bg)',
       }}
     >
       <div className="p-6 space-y-6">
@@ -26,8 +148,7 @@ export function StreakPanel({ onCreateEntry }: { onCreateEntry?: (date?: string)
             Your Progress
           </h2>
 
-          {/* Streak Info */}
-          <div 
+          <div
             className="flex items-start gap-3 p-4 rounded-lg"
             style={{ backgroundColor: 'var(--dashboard-hover)' }}
           >
@@ -51,11 +172,11 @@ export function StreakPanel({ onCreateEntry }: { onCreateEntry?: (date?: string)
           <div className="flex justify-between gap-2">
             {weekProgress.map((item, index) => (
               <div key={index} className="flex flex-col items-center gap-2">
-                <div 
+                <div
                   className="w-10 h-10 rounded-full flex items-center justify-center transition-all"
-                  style={{ 
+                  style={{
                     backgroundColor: item.complete ? 'var(--dashboard-success)' : 'var(--dashboard-hover)',
-                    color: '#ffffff'
+                    color: '#ffffff',
                   }}
                   aria-label={`${item.day}: ${item.complete ? 'Complete' : 'Incomplete'}`}
                 >
@@ -73,17 +194,18 @@ export function StreakPanel({ onCreateEntry }: { onCreateEntry?: (date?: string)
           </div>
         </div>
 
-        {/* Overall Progress Circle */}
+        {/* Overall Progress Circle — from assignments in the same window as Due Soon */}
         <div>
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold text-base" style={{ color: 'var(--dashboard-text-primary)' }}>
               Overall Progress
             </h3>
-            <button 
+            <button
+              type="button"
               className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-all focus:outline-none focus:ring-2"
-              style={{ 
+              style={{
                 backgroundColor: 'var(--dashboard-hover)',
-                color: 'var(--dashboard-text-primary)'
+                color: 'var(--dashboard-text-primary)',
               }}
             >
               <span>All Courses</span>
@@ -91,19 +213,9 @@ export function StreakPanel({ onCreateEntry }: { onCreateEntry?: (date?: string)
             </button>
           </div>
 
-          {/* Simplified Progress Circle */}
           <div className="flex items-center justify-center py-6 relative">
             <svg width="200" height="200" viewBox="0 0 200 200">
-              {/* Background circle */}
-              <circle
-                cx="100"
-                cy="100"
-                r="80"
-                fill="none"
-                stroke="var(--dashboard-border)"
-                strokeWidth="16"
-              />
-              {/* Progress circle - 50% */}
+              <circle cx="100" cy="100" r="80" fill="none" stroke="var(--dashboard-border)" strokeWidth="16" />
               <circle
                 cx="100"
                 cy="100"
@@ -111,116 +223,121 @@ export function StreakPanel({ onCreateEntry }: { onCreateEntry?: (date?: string)
                 fill="none"
                 stroke="var(--dashboard-success)"
                 strokeWidth="16"
-                strokeDasharray="502.65 502.65"
-                strokeDashoffset="251.33"
+                strokeDasharray={`${circumference} ${circumference}`}
+                // Empty ring when nothing is due in the current window.
+                strokeDashoffset={totalInWindow === 0 ? circumference : dashOffset}
                 strokeLinecap="round"
                 transform="rotate(-90 100 100)"
               />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <div className="text-5xl font-bold" style={{ color: 'var(--dashboard-text-primary)' }}>50%</div>
-              <div className="text-base mt-1" style={{ color: 'var(--dashboard-text-secondary)' }}>2 of 4 complete</div>
+              <div className="text-5xl font-bold" style={{ color: 'var(--dashboard-text-primary)' }}>
+                {totalInWindow > 0 ? `${percent}%` : '—'}
+              </div>
             </div>
           </div>
 
-          {/* Stats */}
           <div className="grid grid-cols-2 gap-3 mt-4">
-            <div 
-              className="p-3 rounded-lg"
-              style={{ backgroundColor: 'var(--dashboard-hover)' }}
-            >
-              <div className="text-2xl font-bold mb-1" style={{ color: 'var(--dashboard-success)' }}>2</div>
-              <div className="text-xs" style={{ color: 'var(--dashboard-text-secondary)' }}>Completed</div>
+            <div className="p-3 rounded-lg" style={{ backgroundColor: 'var(--dashboard-hover)' }}>
+              <div className="text-2xl font-bold mb-1" style={{ color: 'var(--dashboard-success)' }}>
+                {totalInWindow > 0 ? completedInWindow : '—'}
+              </div>
+              <div className="text-xs" style={{ color: 'var(--dashboard-text-secondary)' }}>
+                Completed
+              </div>
             </div>
-            <div 
-              className="p-3 rounded-lg"
-              style={{ backgroundColor: 'var(--dashboard-hover)' }}
-            >
-              <div className="text-2xl font-bold mb-1" style={{ color: 'var(--dashboard-accent-red)' }}>2</div>
-              <div className="text-xs" style={{ color: 'var(--dashboard-text-secondary)' }}>Remaining</div>
+            <div className="p-3 rounded-lg" style={{ backgroundColor: 'var(--dashboard-hover)' }}>
+              <div className="text-2xl font-bold mb-1" style={{ color: 'var(--dashboard-accent-red)' }}>
+                {totalInWindow > 0 ? remainingInWindow : '—'}
+              </div>
+              <div className="text-xs" style={{ color: 'var(--dashboard-text-secondary)' }}>
+                Remaining
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Upcoming Tasks */}
+        {/* Due Soon — real calendar / assignment entries in the next 14 days */}
         <div>
-          <h3 className="font-semibold text-base mb-3" style={{ color: 'var(--dashboard-text-primary)' }}>
+          <h3 className="font-semibold text-base mb-1" style={{ color: 'var(--dashboard-text-primary)' }}>
             Due Soon
           </h3>
-          
-          <div className="space-y-3">
-            {/* Task 1 */}
-            <div 
-              className="flex gap-3 p-3 rounded-lg transition-all hover:shadow-sm"
-              style={{ 
-                backgroundColor: 'var(--dashboard-hover)',
-                border: `1px solid var(--dashboard-border)`
-              }}
-            >
-              <div 
-                className="w-12 h-12 rounded-lg flex items-center justify-center shrink-0"
-                style={{ backgroundColor: 'var(--dashboard-accent-red)' }}
-              >
-                <FileText className="w-6 h-6 text-white" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-semibold text-sm mb-1" style={{ color: 'var(--dashboard-text-primary)' }}>
-                  HW 03
-                </div>
-                <div className="text-xs mb-1" style={{ color: 'var(--dashboard-text-secondary)' }}>
-                  MATH-4383-001
-                </div>
-                <div className="text-xs flex items-center gap-1" style={{ color: 'var(--dashboard-warning)' }}>
-                  <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: 'var(--dashboard-warning)' }}></span>
-                  Due Feb 20 at 9:00 AM
-                </div>
-              </div>
-              <div className="text-right shrink-0">
-                <div className="text-lg font-semibold" style={{ color: 'var(--dashboard-text-primary)' }}>25</div>
-                <div className="text-xs" style={{ color: 'var(--dashboard-text-secondary)' }}>pts</div>
-              </div>
-            </div>
+          <p className="text-xs mb-3" style={{ color: 'var(--dashboard-text-secondary)' }}>
+            Next {DUE_SOON_DAYS} days · incomplete assignments and scheduled events
+          </p>
 
-            {/* Task 2 */}
-            <div 
-              className="flex gap-3 p-3 rounded-lg transition-all hover:shadow-sm"
-              style={{ 
-                backgroundColor: 'var(--dashboard-hover)',
-                border: `1px solid var(--dashboard-border)`
-              }}
-            >
-              <div 
-                className="w-12 h-12 rounded-lg flex items-center justify-center shrink-0"
-                style={{ backgroundColor: 'var(--dashboard-accent-green)' }}
+          <div className="space-y-3">
+            {dueSoonItems.length === 0 ? (
+              <div
+                className="p-4 rounded-lg text-sm text-center"
+                style={{ backgroundColor: 'var(--dashboard-hover)', color: 'var(--dashboard-text-secondary)' }}
               >
-                <FileText className="w-6 h-6 text-white" />
+                Nothing due in the next {DUE_SOON_DAYS} days. Add a task or check your calendar.
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-semibold text-sm mb-1" style={{ color: 'var(--dashboard-text-primary)' }}>
-                  Case Study 1
-                </div>
-                <div className="text-xs mb-1" style={{ color: 'var(--dashboard-text-secondary)' }}>
-                  C S-4063-001
-                </div>
-                <div className="text-xs flex items-center gap-1" style={{ color: 'var(--dashboard-warning)' }}>
-                  <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: 'var(--dashboard-warning)' }}></span>
-                  Due Feb 20 at 11:59 PM
-                </div>
-              </div>
-              <div className="text-right shrink-0">
-                <div className="text-lg font-semibold" style={{ color: 'var(--dashboard-text-primary)' }}>20</div>
-                <div className="text-xs" style={{ color: 'var(--dashboard-text-secondary)' }}>pts</div>
-              </div>
-            </div>
+            ) : (
+              dueSoonItems.map((task) => {
+                const isAssignment = task.taskType === 'assignment';
+                const dueLine = isAssignment
+                  ? `Due ${formatShortDate(task.eventDate)}${task.dueTime ? ` at ${task.dueTime}` : ''}`
+                  : `${formatShortDate(task.eventDate)}${task.time ? ` · ${task.time}` : ''}`;
+                return (
+                  <div
+                    key={task._id}
+                    className="flex gap-3 p-3 rounded-lg transition-all hover:shadow-sm"
+                    style={{
+                      backgroundColor: 'var(--dashboard-hover)',
+                      border: `1px solid var(--dashboard-border)`,
+                    }}
+                  >
+                    <div
+                      className="w-12 h-12 rounded-lg flex items-center justify-center shrink-0"
+                      style={{ backgroundColor: thumbnailColor(task.thumbnail) }}
+                    >
+                      {isAssignment ? (
+                        <FileText className="w-6 h-6 text-white" />
+                      ) : (
+                        <Calendar className="w-6 h-6 text-white" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-sm mb-1 truncate" style={{ color: 'var(--dashboard-text-primary)' }}>
+                        {task.taskTitle}
+                      </div>
+                      <div className="text-xs mb-1 truncate" style={{ color: 'var(--dashboard-text-secondary)' }}>
+                        {courseLabel(task)}
+                      </div>
+                      <div className="text-xs flex items-center gap-1" style={{ color: 'var(--dashboard-warning)' }}>
+                        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: 'var(--dashboard-warning)' }} />
+                        <span className="truncate">{dueLine}</span>
+                      </div>
+                    </div>
+                    {isAssignment && task.points !== undefined && task.points !== null ? (
+                      <div className="text-right shrink-0">
+                        <div className="text-lg font-semibold" style={{ color: 'var(--dashboard-text-primary)' }}>
+                          {task.points}
+                        </div>
+                        <div className="text-xs" style={{ color: 'var(--dashboard-text-secondary)' }}>
+                          pts
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-right shrink-0 text-xs font-medium" style={{ color: 'var(--dashboard-text-secondary)' }}>
+                        Event
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
           </div>
 
-          {/* New Task Button */}
-          <button 
+          <button
+            type="button"
             onClick={() => onCreateEntry?.()}
             className="w-full mt-4 py-3 rounded-lg flex items-center justify-center gap-2 font-medium transition-all focus:outline-none focus:ring-2"
-            style={{ 
+            style={{
               backgroundColor: 'var(--dashboard-info)',
-              color: '#ffffff'
+              color: '#ffffff',
             }}
             aria-label="Create new task"
           >

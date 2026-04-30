@@ -2,12 +2,150 @@ import { Plus, Calendar, Bell, MoreVertical, Moon, Sun } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { logout } from '../../lib/api';
+import { useChatbar } from '../chat/ChatbarProvider';
+import type { ChatPayload } from '../chat/chatTypes';
+
+type NotificationItem = {
+  id: string;
+  category: 'message' | 'announcement';
+  source: string;
+  title: string;
+  preview: string;
+  timeAgo: string;
+  avatarLabel: string;
+  accentColor: string;
+  chatPayload: ChatPayload;
+};
 
 export function TopNav({ onCreateEntry }: { onCreateEntry?: (date?: string) => void }) {
   const [darkMode, setDarkMode] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<'all' | 'message' | 'announcement'>('all');
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const { openOrFocusChat } = useChatbar();
+
+  const notifications: NotificationItem[] = [
+    {
+      id: 'chat-prof-jane-doe',
+      category: 'message',
+      source: 'Prof. Jane Doe',
+      title: 'Re: Office Hours Question',
+      preview: 'Hi! I can meet tomorrow at 3pm to discuss your project proposal. Please bring your draft...',
+      timeAgo: '2h ago',
+      avatarLabel: 'JD',
+      accentColor: 'var(--dashboard-info)',
+      chatPayload: {
+        id: 'chat-prof-jane-doe',
+        kind: 'message',
+        title: 'Prof. Jane Doe',
+        subtitle: 'Office Hours',
+        avatarLabel: 'JD',
+        accentColor: 'var(--dashboard-info)',
+        unreadCount: 1,
+        messages: [
+          { id: 'm-1', author: 'Prof. Jane Doe', body: 'Hi! I can meet tomorrow at 3pm to discuss your project proposal.', timestamp: '2:11 PM', direction: 'incoming' },
+        ],
+      },
+    },
+    {
+      id: 'chat-modern-algebra',
+      category: 'announcement',
+      source: 'Modern Algebra',
+      title: 'HW 04 Now Available',
+      preview: 'The fourth homework assignment covering chapters 5-6 is now available. Due date is Feb 25...',
+      timeAgo: '3h ago',
+      avatarLabel: 'MA',
+      accentColor: 'var(--dashboard-warning)',
+      chatPayload: {
+        id: 'chat-modern-algebra',
+        kind: 'course',
+        title: 'Modern Algebra',
+        subtitle: 'Course announcements',
+        avatarLabel: 'MA',
+        accentColor: 'var(--dashboard-warning)',
+        messages: [
+          { id: 'a-1', author: 'Modern Algebra', body: 'The fourth homework assignment is now available.', timestamp: '1:34 PM', direction: 'incoming' },
+        ],
+      },
+    },
+    {
+      id: 'chat-sarah-miller',
+      category: 'message',
+      source: 'Sarah Miller',
+      title: 'Study group tonight?',
+      preview: 'Hey! Are we still meeting at the library at 7pm? I have some questions about the last lecture...',
+      timeAgo: '5h ago',
+      avatarLabel: 'SM',
+      accentColor: 'var(--dashboard-success)',
+      chatPayload: {
+        id: 'chat-sarah-miller',
+        kind: 'message',
+        title: 'Sarah Miller',
+        subtitle: 'Study group',
+        avatarLabel: 'SM',
+        accentColor: 'var(--dashboard-success)',
+        unreadCount: 1,
+        messages: [
+          { id: 'm-2', author: 'Sarah Miller', body: 'Are we still meeting at the library at 7pm?', timestamp: '11:40 AM', direction: 'incoming' },
+        ],
+      },
+    },
+    {
+      id: 'chat-computer-science',
+      category: 'announcement',
+      source: 'Computer Science',
+      title: 'Exam Schedule Posted',
+      preview: 'The midterm exam will be held on March 1st in the main auditorium. Review sessions start next week...',
+      timeAgo: '1d ago',
+      avatarLabel: 'CS',
+      accentColor: 'var(--dashboard-warning)',
+      chatPayload: {
+        id: 'chat-computer-science',
+        kind: 'course',
+        title: 'Computer Science',
+        subtitle: 'Exam updates',
+        avatarLabel: 'CS',
+        accentColor: 'var(--dashboard-warning)',
+        messages: [
+          { id: 'a-2', author: 'Computer Science', body: 'The midterm exam schedule has been posted.', timestamp: 'Yesterday', direction: 'incoming' },
+        ],
+      },
+    },
+    {
+      id: 'chat-data-structures',
+      category: 'announcement',
+      source: 'Data Structures',
+      title: 'New Resources Available',
+      preview: 'Practice problems for binary trees and sorting algorithms have been uploaded to the Files section...',
+      timeAgo: '1d ago',
+      avatarLabel: 'DS',
+      accentColor: 'var(--dashboard-warning)',
+      chatPayload: {
+        id: 'chat-data-structures',
+        kind: 'course',
+        title: 'Data Structures',
+        subtitle: 'Course resources',
+        avatarLabel: 'DS',
+        accentColor: 'var(--dashboard-warning)',
+        messages: [
+          { id: 'a-3', author: 'Data Structures', body: 'New practice problems are now available in files.', timestamp: 'Yesterday', direction: 'incoming' },
+        ],
+      },
+    },
+  ];
+
+  const filteredNotifications =
+    activeFilter === 'all'
+      ? notifications
+      : notifications.filter((item) => item.category === activeFilter);
+  const messageCount = notifications.filter((item) => item.category === 'message').length;
+  const announcementCount = notifications.filter((item) => item.category === 'announcement').length;
+
+  const openChatFromNotification = (item: NotificationItem) => {
+    openOrFocusChat(item.chatPayload);
+    setShowNotifications(false);
+  };
 
   const toggleDarkMode = () => {
     setDarkMode(!darkMode);
@@ -122,7 +260,7 @@ export function TopNav({ onCreateEntry }: { onCreateEntry?: (date?: string) => v
             <span 
               className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full"
               style={{ backgroundColor: 'var(--dashboard-accent-red)' }}
-              aria-label="5 unread items"
+              aria-label={`${notifications.length} unread items`}
             ></span>
           </button>
 
@@ -156,7 +294,7 @@ export function TopNav({ onCreateEntry }: { onCreateEntry?: (date?: string) => v
                     color: '#ffffff'
                   }}
                 >
-                  5 new
+                  {notifications.length} new
                 </span>
               </div>
               
@@ -165,216 +303,85 @@ export function TopNav({ onCreateEntry }: { onCreateEntry?: (date?: string) => v
                 className="flex"
                 style={{ borderBottom: `1px solid var(--dashboard-border)` }}
               >
-                <button 
+                <button
                   className="flex-1 px-4 py-3 text-sm font-semibold transition-colors focus:outline-none"
                   style={{ 
-                    color: 'var(--dashboard-info)',
-                    borderBottom: `2px solid var(--dashboard-info)`,
-                    backgroundColor: 'var(--dashboard-hover)'
+                    color: activeFilter === 'all' ? 'var(--dashboard-info)' : 'var(--dashboard-text-secondary)',
+                    borderBottom: activeFilter === 'all' ? `2px solid var(--dashboard-info)` : '2px solid transparent',
+                    backgroundColor: activeFilter === 'all' ? 'var(--dashboard-hover)' : 'transparent'
                   }}
+                  onClick={() => setActiveFilter('all')}
                 >
-                  All (5)
+                  All ({notifications.length})
                 </button>
                 <button 
-                  className="flex-1 px-4 py-3 text-sm font-medium transition-colors focus:outline-none"
-                  style={{ color: 'var(--dashboard-text-secondary)' }}
+                  className="flex-1 px-4 py-3 text-sm transition-colors focus:outline-none"
+                  style={{
+                    color: activeFilter === 'message' ? 'var(--dashboard-info)' : 'var(--dashboard-text-secondary)',
+                    borderBottom: activeFilter === 'message' ? `2px solid var(--dashboard-info)` : '2px solid transparent',
+                    fontWeight: activeFilter === 'message' ? 600 : 500,
+                  }}
+                  onClick={() => setActiveFilter('message')}
                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--dashboard-hover)'}
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                 >
-                  Messages (2)
+                  Messages ({messageCount})
                 </button>
                 <button 
-                  className="flex-1 px-4 py-3 text-sm font-medium transition-colors focus:outline-none"
-                  style={{ color: 'var(--dashboard-text-secondary)' }}
+                  className="flex-1 px-4 py-3 text-sm transition-colors focus:outline-none"
+                  style={{
+                    color: activeFilter === 'announcement' ? 'var(--dashboard-info)' : 'var(--dashboard-text-secondary)',
+                    borderBottom: activeFilter === 'announcement' ? `2px solid var(--dashboard-info)` : '2px solid transparent',
+                    fontWeight: activeFilter === 'announcement' ? 600 : 500,
+                  }}
+                  onClick={() => setActiveFilter('announcement')}
                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--dashboard-hover)'}
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                 >
-                  Announcements (3)
+                  Announcements ({announcementCount})
                 </button>
               </div>
               
               <div className="max-h-96 overflow-y-auto">
-                {/* Message Item 1 */}
-                <button 
-                  className="w-full px-4 py-3 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-inset"
-                  style={{ 
-                    borderBottom: `1px solid var(--dashboard-border)`,
-                    backgroundColor: 'var(--dashboard-card-bg)'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--dashboard-hover)'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--dashboard-card-bg)'}
-                  role="menuitem"
-                >
-                  <div className="flex gap-3">
-                    <div 
-                      className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 font-semibold text-white"
-                      style={{ backgroundColor: 'var(--dashboard-info)' }}
-                    >
-                      JD
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2 mb-1">
-                        <p className="font-semibold text-sm" style={{ color: 'var(--dashboard-text-primary)' }}>
-                          Prof. Jane Doe
-                        </p>
-                        <span className="text-xs shrink-0" style={{ color: 'var(--dashboard-text-secondary)' }}>
-                          2h ago
-                        </span>
+                {filteredNotifications.map((item, index) => (
+                  <button
+                    key={item.id}
+                    className="w-full px-4 py-3 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-inset"
+                    style={{
+                      borderBottom: index === filteredNotifications.length - 1 ? 'none' : `1px solid var(--dashboard-border)`,
+                      backgroundColor: 'var(--dashboard-card-bg)',
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--dashboard-hover)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'var(--dashboard-card-bg)')}
+                    onClick={() => openChatFromNotification(item)}
+                    role="menuitem"
+                  >
+                    <div className="flex gap-3">
+                      <div
+                        className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 font-semibold text-white"
+                        style={{ backgroundColor: item.accentColor }}
+                      >
+                        {item.avatarLabel}
                       </div>
-                      <p className="text-sm font-medium mb-1" style={{ color: 'var(--dashboard-text-primary)' }}>
-                        Re: Office Hours Question
-                      </p>
-                      <p className="text-sm line-clamp-2" style={{ color: 'var(--dashboard-text-secondary)' }}>
-                        Hi! I can meet tomorrow at 3pm to discuss your project proposal. Please bring your draft...
-                      </p>
-                    </div>
-                  </div>
-                </button>
-
-                {/* Announcement Item 1 */}
-                <button 
-                  className="w-full px-4 py-3 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-inset"
-                  style={{ 
-                    borderBottom: `1px solid var(--dashboard-border)`,
-                    backgroundColor: 'var(--dashboard-card-bg)'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--dashboard-hover)'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--dashboard-card-bg)'}
-                  role="menuitem"
-                >
-                  <div className="flex gap-3">
-                    <div 
-                      className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
-                      style={{ backgroundColor: 'var(--dashboard-warning)' }}
-                    >
-                      <Bell className="w-5 h-5 text-white" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2 mb-1">
-                        <p className="text-xs font-medium" style={{ color: 'var(--dashboard-text-secondary)' }}>
-                          Modern Algebra
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2 mb-1">
+                          <p className="text-xs font-medium" style={{ color: 'var(--dashboard-text-secondary)' }}>
+                            {item.source}
+                          </p>
+                          <span className="text-xs shrink-0" style={{ color: 'var(--dashboard-text-secondary)' }}>
+                            {item.timeAgo}
+                          </span>
+                        </div>
+                        <p className="font-semibold text-sm mb-1" style={{ color: 'var(--dashboard-text-primary)' }}>
+                          {item.title}
                         </p>
-                        <span className="text-xs shrink-0" style={{ color: 'var(--dashboard-text-secondary)' }}>
-                          3h ago
-                        </span>
-                      </div>
-                      <p className="font-semibold text-sm mb-1" style={{ color: 'var(--dashboard-text-primary)' }}>
-                        HW 04 Now Available
-                      </p>
-                      <p className="text-sm line-clamp-2" style={{ color: 'var(--dashboard-text-secondary)' }}>
-                        The fourth homework assignment covering chapters 5-6 is now available. Due date is Feb 25...
-                      </p>
-                    </div>
-                  </div>
-                </button>
-
-                {/* Message Item 2 */}
-                <button 
-                  className="w-full px-4 py-3 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-inset"
-                  style={{ 
-                    borderBottom: `1px solid var(--dashboard-border)`,
-                    backgroundColor: 'var(--dashboard-card-bg)'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--dashboard-hover)'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--dashboard-card-bg)'}
-                  role="menuitem"
-                >
-                  <div className="flex gap-3">
-                    <div 
-                      className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 font-semibold text-white"
-                      style={{ backgroundColor: 'var(--dashboard-success)' }}
-                    >
-                      SM
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2 mb-1">
-                        <p className="font-semibold text-sm" style={{ color: 'var(--dashboard-text-primary)' }}>
-                          Sarah Miller
+                        <p className="text-sm line-clamp-2" style={{ color: 'var(--dashboard-text-secondary)' }}>
+                          {item.preview}
                         </p>
-                        <span className="text-xs shrink-0" style={{ color: 'var(--dashboard-text-secondary)' }}>
-                          5h ago
-                        </span>
                       </div>
-                      <p className="text-sm font-medium mb-1" style={{ color: 'var(--dashboard-text-primary)' }}>
-                        Study group tonight?
-                      </p>
-                      <p className="text-sm line-clamp-2" style={{ color: 'var(--dashboard-text-secondary)' }}>
-                        Hey! Are we still meeting at the library at 7pm? I have some questions about the last lecture...
-                      </p>
                     </div>
-                  </div>
-                </button>
-
-                {/* Announcement Item 2 */}
-                <button 
-                  className="w-full px-4 py-3 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-inset"
-                  style={{ 
-                    borderBottom: `1px solid var(--dashboard-border)`,
-                    backgroundColor: 'var(--dashboard-card-bg)'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--dashboard-hover)'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--dashboard-card-bg)'}
-                  role="menuitem"
-                >
-                  <div className="flex gap-3">
-                    <div 
-                      className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
-                      style={{ backgroundColor: 'var(--dashboard-warning)' }}
-                    >
-                      <Bell className="w-5 h-5 text-white" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2 mb-1">
-                        <p className="text-xs font-medium" style={{ color: 'var(--dashboard-text-secondary)' }}>
-                          Computer Science
-                        </p>
-                        <span className="text-xs shrink-0" style={{ color: 'var(--dashboard-text-secondary)' }}>
-                          1d ago
-                        </span>
-                      </div>
-                      <p className="font-semibold text-sm mb-1" style={{ color: 'var(--dashboard-text-primary)' }}>
-                        Exam Schedule Posted
-                      </p>
-                      <p className="text-sm line-clamp-2" style={{ color: 'var(--dashboard-text-secondary)' }}>
-                        The midterm exam will be held on March 1st in the main auditorium. Review sessions start next week...
-                      </p>
-                    </div>
-                  </div>
-                </button>
-
-                {/* Announcement Item 3 */}
-                <button 
-                  className="w-full px-4 py-3 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-inset"
-                  style={{ backgroundColor: 'var(--dashboard-card-bg)' }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--dashboard-hover)'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--dashboard-card-bg)'}
-                  role="menuitem"
-                >
-                  <div className="flex gap-3">
-                    <div 
-                      className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
-                      style={{ backgroundColor: 'var(--dashboard-warning)' }}
-                    >
-                      <Bell className="w-5 h-5 text-white" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2 mb-1">
-                        <p className="text-xs font-medium" style={{ color: 'var(--dashboard-text-secondary)' }}>
-                          Data Structures
-                        </p>
-                        <span className="text-xs shrink-0" style={{ color: 'var(--dashboard-text-secondary)' }}>
-                          1d ago
-                        </span>
-                      </div>
-                      <p className="font-semibold text-sm mb-1" style={{ color: 'var(--dashboard-text-primary)' }}>
-                        New Resources Available
-                      </p>
-                      <p className="text-sm line-clamp-2" style={{ color: 'var(--dashboard-text-secondary)' }}>
-                        Practice problems for binary trees and sorting algorithms have been uploaded to the Files section...
-                      </p>
-                    </div>
-                  </div>
-                </button>
+                  </button>
+                ))}
               </div>
 
               {/* Footer */}

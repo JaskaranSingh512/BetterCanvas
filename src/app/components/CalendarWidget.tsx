@@ -3,10 +3,12 @@ import { useMemo, useState } from 'react';
 
 export function CalendarWidget({
   taskDates = [],
+  taskMarkers = {},
   onDateClick,
 }: {
   taskDates?: string[];
-  onDateClick?: (date: string) => void;
+  taskMarkers?: Record<string, { count: number; courses: string[] }>;
+  onDateClick?: (date: string, hasTask: boolean) => void;
 }) {
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const [monthDate, setMonthDate] = useState(new Date());
@@ -19,6 +21,7 @@ export function CalendarWidget({
     const offset = first.getDay();
     const daysInMonth = new Date(yearValue, monthValue + 1, 0).getDate();
     const flat = [];
+    // Fill leading/trailing null slots so grid stays aligned by weekday.
     for (let i = 0; i < offset; i += 1) flat.push(null);
     for (let day = 1; day <= daysInMonth; day += 1) flat.push(day);
     while (flat.length % 7 !== 0) flat.push(null);
@@ -80,13 +83,37 @@ export function CalendarWidget({
       <div className="grid grid-cols-7 gap-1">
         {dates.map((date, index) => {
           const dateString = date === null ? '' : `${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(date).padStart(2, '0')}`;
-          const hasTask = !!date && taskDates.includes(dateString);
+          const marker = taskMarkers[dateString];
+          const fallbackHasTask = !!date && taskDates.includes(dateString);
+          // Prefer rich marker data, but keep backward compatibility with plain date list.
+          const hasTask = !!date && (!!marker || fallbackHasTask);
+          const taskCount = marker?.count || 0;
+          const courses = marker?.courses || [];
+          const primaryCourse = courses[0] || '';
+          const extraCourseCount = Math.max(0, courses.length - 1);
           const isToday = dateString === todayString;
+          const labelParts = [];
+          if (dateString) {
+            labelParts.push(
+              new Date(`${dateString}T00:00:00`).toLocaleDateString('en-US', {
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric',
+              })
+            );
+          }
+          if (hasTask) {
+            if (courses.length > 0) {
+              labelParts.push(`Assignments: ${courses.join(', ')}`);
+            } else {
+              labelParts.push('Assignments due');
+            }
+          }
           return (
           <button
             key={index}
             disabled={date === null}
-            className="aspect-square flex flex-col items-center justify-center rounded text-sm transition-all focus:outline-none focus:ring-2 relative"
+            className="aspect-square min-h-[42px] rounded text-sm transition-all focus:outline-none focus:ring-2 relative pt-1"
             style={{
               backgroundColor: isToday 
                 ? 'var(--dashboard-info)' 
@@ -106,22 +133,48 @@ export function CalendarWidget({
               }
             }}
             onMouseLeave={(e) => {
+              // Preserve visual cue for task days after hover-out.
               if (date && !isToday && !hasTask) {
                 e.currentTarget.style.backgroundColor = 'transparent';
               } else if (date && hasTask && !isToday) {
                 e.currentTarget.style.backgroundColor = 'var(--dashboard-hover)';
               }
             }}
-            aria-label={date ? new Date(`${dateString}T00:00:00`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : undefined}
+            aria-label={date ? labelParts.join('. ') : undefined}
             aria-current={isToday ? 'date' : undefined}
-            onClick={() => dateString && onDateClick?.(dateString)}
+            onClick={() => dateString && onDateClick?.(dateString, hasTask)}
           >
-            {date}
+            <span className="block text-center font-medium">{date}</span>
             {hasTask && !isToday && (
-              <div 
-                className="absolute bottom-1 w-1 h-1 rounded-full"
+              <span
+                className="block mx-auto mt-1 h-2.5 w-2.5 rounded-full"
                 style={{ backgroundColor: 'var(--dashboard-info)' }}
-              ></div>
+              ></span>
+            )}
+            {hasTask && courses.length > 0 && (
+              <span
+                className="absolute bottom-0.5 left-1/2 -translate-x-1/2 max-w-[92%] truncate rounded px-1 py-[1px] text-[9px] font-semibold"
+                style={{
+                  backgroundColor: 'var(--dashboard-info)',
+                  color: '#ffffff',
+                }}
+                title={courses.join(', ')}
+              >
+                {primaryCourse}
+                {extraCourseCount > 0 ? ` +${extraCourseCount}` : ''}
+              </span>
+            )}
+            {hasTask && taskCount > 1 && (
+              <span
+                className="absolute top-0.5 right-0.5 min-w-[16px] h-4 px-1 rounded-full text-[10px] leading-4 text-center font-semibold"
+                style={{
+                  backgroundColor: 'var(--dashboard-warning)',
+                  color: '#ffffff',
+                }}
+                title={`${taskCount} assignments`}
+              >
+                {taskCount}
+              </span>
             )}
           </button>
         )})}
@@ -137,6 +190,10 @@ export function CalendarWidget({
           <div className="flex items-center gap-2">
             <div className="w-3 h-1 rounded-full" style={{ backgroundColor: 'var(--dashboard-info)' }}></div>
             <span style={{ color: 'var(--dashboard-text-secondary)' }}>Has tasks</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="min-w-[16px] h-4 px-1 rounded-full text-[10px] leading-4 text-center font-semibold" style={{ backgroundColor: 'var(--dashboard-warning)', color: '#ffffff' }}>2</div>
+            <span style={{ color: 'var(--dashboard-text-secondary)' }}>Task count</span>
           </div>
         </div>
       </div>

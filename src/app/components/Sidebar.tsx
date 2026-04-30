@@ -7,7 +7,10 @@ import {
   HelpCircle, 
   ArrowLeft 
 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router';
+
+const PROFILE_PHOTO_KEY = 'bettercanvas_profile_photo';
 
 const navItems = [
   { to: '/account', icon: User, label: 'Account', isAvatar: true },
@@ -20,6 +23,20 @@ const navItems = [
 
 export function Sidebar() {
   const navigate = useNavigate();
+  const [profilePhoto, setProfilePhoto] = useState<string>('');
+
+  useEffect(() => {
+    const loadPhoto = () => {
+      setProfilePhoto(localStorage.getItem(PROFILE_PHOTO_KEY) || '');
+    };
+    loadPhoto();
+    window.addEventListener('storage', loadPhoto);
+    window.addEventListener('bettercanvas-profile-photo-updated', loadPhoto);
+    return () => {
+      window.removeEventListener('storage', loadPhoto);
+      window.removeEventListener('bettercanvas-profile-photo-updated', loadPhoto);
+    };
+  }, []);
 
   return (
     <div 
@@ -61,7 +78,11 @@ export function Sidebar() {
                     className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center"
                     style={{ backgroundColor: 'var(--dashboard-hover)' }}
                   >
-                    <item.icon className="w-6 h-6" style={{ color: 'var(--dashboard-sidebar-text)' }} />
+                    {profilePhoto ? (
+                      <img src={profilePhoto} alt="Profile" className="w-full h-full object-cover" />
+                    ) : (
+                      <item.icon className="w-6 h-6" style={{ color: 'var(--dashboard-sidebar-text)' }} />
+                    )}
                   </div>
                 ) : (
                   <item.icon className="w-8 h-8" style={{ color: 'var(--dashboard-sidebar-text)' }} />
