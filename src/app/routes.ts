@@ -2,6 +2,7 @@ import { createBrowserRouter, redirect } from 'react-router';
 import { Layout } from './components/Layout';
 import { DashboardPage } from './pages/DashboardPage';
 import { CoursesPage } from './pages/CoursesPage';
+import { CourseDetailPage } from './pages/CourseDetailPage';
 import { CalendarPage } from './pages/CalendarPage';
 import { GroupsPage } from './pages/GroupsPage';
 import { AccountPage } from './pages/AccountPage';
@@ -22,6 +23,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, Component: DashboardPage },
       { path: 'courses', Component: CoursesPage },
+      { path: 'courses/:courseId', Component: CourseDetailPage },
       { path: 'calendar', Component: CalendarPage },
       { path: 'groups', Component: GroupsPage },
       { path: 'account', Component: AccountPage },
