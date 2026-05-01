@@ -52,6 +52,10 @@ export async function getCourses() {
   return request("/courses");
 }
 
+export async function getCourse(id: string) {
+  return request(`/courses/${id}`);
+}
+
 export async function getCalendarTasks() {
   return request("/calendar/tasks");
 }

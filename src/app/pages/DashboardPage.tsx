@@ -7,11 +7,13 @@ import { getDashboard, getCourses, setFocusedCourse } from '../../lib/api';
 
 export function DashboardPage() {
   const navigate = useNavigate();
-  const { openCreateEntry, reloadKey } = useOutletContext<{ openCreateEntry: (date?: string) => void; reloadKey: number }>();
+  const { openCreateEntry, reloadKey } = useOutletContext<{ openCreateEntry: (date?: string, hasTask?: boolean) => void; reloadKey: number }>();
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState('');
   const [showCustomize, setShowCustomize] = useState(false);
   const [allCourses, setAllCourses] = useState<any[]>([]);
+  const [showWeekAssignments, setShowWeekAssignments] = useState(false);
+  const [showWeekEvents, setShowWeekEvents] = useState(false);
 
   useEffect(() => {
     getDashboard()
@@ -37,6 +39,13 @@ export function DashboardPage() {
 
   const focused = data.focusedCourse;
   const task = data.recentTask;
+  const focusedWeek = data.focusedWeek || {
+    weekLabel: '',
+    assignmentsDue: [] as Array<{ id: string; title: string; eventDate: string; dateLabel: string; dueTime: string }>,
+    calendarEvents: [] as Array<{ id: string; title: string; eventDate: string; dateLabel: string; time: string }>,
+  };
+  const weekAssignmentCount = focused ? focusedWeek.assignmentsDue.length : 0;
+  const weekEventCount = focused ? focusedWeek.calendarEvents.length : 0;
 
   return (
     <>
@@ -56,7 +65,7 @@ export function DashboardPage() {
       </header>
 
       <div className="px-8 py-4">
-        {/* Focused Courses Section with Pin Icon */}
+        {/* Focused Courses Section */}
         <section className="mb-10" aria-labelledby="focused-courses-heading">
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-3">
@@ -84,20 +93,12 @@ export function DashboardPage() {
           </div>
 
           <div
-            className="p-6 rounded-lg relative"
+            className="p-6 rounded-lg"
             style={{
               backgroundColor: 'var(--dashboard-hover)',
               border: `2px solid var(--dashboard-warning)`
             }}
           >
-            <div
-              className="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center"
-              style={{ backgroundColor: 'var(--dashboard-warning)' }}
-              aria-label="Pinned course"
-            >
-              <Pin className="w-4 h-4 text-white" />
-            </div>
-
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3
@@ -133,19 +134,104 @@ export function DashboardPage() {
             </div>
 
             <div className="grid grid-cols-3 gap-4 pt-4" style={{ borderTop: `1px solid var(--dashboard-border)` }}>
-              <div>
-                <div className="text-2xl font-bold mb-1" style={{ color: 'var(--dashboard-text-primary)' }}>{focused?.assignmentsDue ?? 0}</div>
-                <div className="text-sm" style={{ color: 'var(--dashboard-text-secondary)' }}>Assignments Due</div>
+              <div
+                className="relative min-h-[72px]"
+                onMouseEnter={() => focused && setShowWeekAssignments(true)}
+                onMouseLeave={() => setShowWeekAssignments(false)}
+              >
+                <div className="text-2xl font-bold mb-1" style={{ color: 'var(--dashboard-text-primary)' }}>
+                  {focused ? weekAssignmentCount : '—'}
+                </div>
+                <div className="text-sm" style={{ color: 'var(--dashboard-text-secondary)' }}>
+                  Assignments due this week
+                </div>
+                {focused && showWeekAssignments && (
+                  <div className="absolute left-0 top-full z-[40] w-full min-w-[220px] max-w-[min(100vw-2rem,320px)] pt-2">
+                    <div
+                      className="rounded-lg shadow-xl p-3 text-left text-sm max-h-56 overflow-y-auto"
+                      style={{
+                        backgroundColor: 'var(--dashboard-card-bg)',
+                        border: '1px solid var(--dashboard-border)',
+                      }}
+                    >
+                      <p className="text-xs font-semibold mb-2" style={{ color: 'var(--dashboard-text-secondary)' }}>
+                        {focusedWeek.weekLabel}
+                      </p>
+                      {focusedWeek.assignmentsDue.length === 0 ? (
+                        <p style={{ color: 'var(--dashboard-text-secondary)' }}>No assignments due this week.</p>
+                      ) : (
+                        <ul className="space-y-2">
+                          {focusedWeek.assignmentsDue.map((item) => (
+                            <li key={item.id} className="pb-2 border-b last:border-0 last:pb-0" style={{ borderColor: 'var(--dashboard-border)' }}>
+                              <div className="font-medium" style={{ color: 'var(--dashboard-text-primary)' }}>
+                                {item.title}
+                              </div>
+                              <div className="text-xs mt-0.5" style={{ color: 'var(--dashboard-text-secondary)' }}>
+                                {item.dateLabel}
+                                {item.dueTime ? ` · ${item.dueTime}` : ''}
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
-              <div>
-                <div className="text-2xl font-bold mb-1" style={{ color: 'var(--dashboard-text-primary)' }}>{focused?.upcomingEvents ?? 0}</div>
-                <div className="text-sm" style={{ color: 'var(--dashboard-text-secondary)' }}>Upcoming Events</div>
+              <div
+                className="relative min-h-[72px]"
+                onMouseEnter={() => focused && setShowWeekEvents(true)}
+                onMouseLeave={() => setShowWeekEvents(false)}
+              >
+                <div className="text-2xl font-bold mb-1" style={{ color: 'var(--dashboard-text-primary)' }}>
+                  {focused ? weekEventCount : '—'}
+                </div>
+                <div className="text-sm" style={{ color: 'var(--dashboard-text-secondary)' }}>
+                  Events this week
+                </div>
+                {focused && showWeekEvents && (
+                  <div className="absolute left-0 top-full z-[40] w-full min-w-[220px] max-w-[min(100vw-2rem,320px)] pt-2">
+                    <div
+                      className="rounded-lg shadow-xl p-3 text-left text-sm max-h-56 overflow-y-auto"
+                      style={{
+                        backgroundColor: 'var(--dashboard-card-bg)',
+                        border: '1px solid var(--dashboard-border)',
+                      }}
+                    >
+                      <p className="text-xs font-semibold mb-2" style={{ color: 'var(--dashboard-text-secondary)' }}>
+                        {focusedWeek.weekLabel}
+                      </p>
+                      {focusedWeek.calendarEvents.length === 0 ? (
+                        <p style={{ color: 'var(--dashboard-text-secondary)' }}>No calendar events this week.</p>
+                      ) : (
+                        <ul className="space-y-2">
+                          {focusedWeek.calendarEvents.map((item) => (
+                            <li key={item.id} className="pb-2 border-b last:border-0 last:pb-0" style={{ borderColor: 'var(--dashboard-border)' }}>
+                              <div className="font-medium" style={{ color: 'var(--dashboard-text-primary)' }}>
+                                {item.title}
+                              </div>
+                              <div className="text-xs mt-0.5" style={{ color: 'var(--dashboard-text-secondary)' }}>
+                                {item.dateLabel}
+                                {item.time ? ` · ${item.time}` : ''}
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
               <div>
                 <div className="text-2xl font-bold mb-1" style={{ color: 'var(--dashboard-text-primary)' }}>{focused?.nextExamIn ?? 'N/A'}</div>
-                <div className="text-sm" style={{ color: 'var(--dashboard-text-secondary)' }}>Until Next Exam</div>
+                <div className="text-sm" style={{ color: 'var(--dashboard-text-secondary)' }}>Until next exam</div>
               </div>
             </div>
+            {focused && focusedWeek.weekLabel ? (
+              <p className="text-xs mt-3" style={{ color: 'var(--dashboard-text-secondary)' }}>
+                Counts use your calendar entries for this focused course, week of {focusedWeek.weekLabel}.
+              </p>
+            ) : null}
           </div>
         </section>
 
@@ -169,7 +255,11 @@ export function DashboardPage() {
           </section>
 
           <aside aria-label="Calendar">
-            <CalendarWidget taskDates={data.taskDates || []} onDateClick={openCreateEntry} />
+            <CalendarWidget
+              taskDates={data.taskDates || []}
+              taskMarkers={data.taskMarkers || {}}
+              onDateClick={openCreateEntry}
+            />
           </aside>
         </div>
 

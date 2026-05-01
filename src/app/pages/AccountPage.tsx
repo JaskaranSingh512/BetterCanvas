@@ -1,10 +1,22 @@
 import { User, Mail, BookOpen, Shield } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { ChangeEvent } from 'react';
 import { getAccount, patchAccount } from '../../lib/api';
+
+const PROFILE_PHOTO_KEY = 'bettercanvas_profile_photo';
 
 export function AccountPage() {
   const [profile, setProfile] = useState<any>(null);
   const [error, setError] = useState('');
+  const [profilePhoto, setProfilePhoto] = useState<string>('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const savedPhoto = localStorage.getItem(PROFILE_PHOTO_KEY);
+    if (savedPhoto) {
+      setProfilePhoto(savedPhoto);
+    }
+  }, []);
 
   const load = () =>
     getAccount()
@@ -27,6 +39,23 @@ export function AccountPage() {
 
   if (error) return <div className="px-8 py-8">{error}</div>;
   if (!profile) return <div className="px-8 py-8">Loading account...</div>;
+
+  const onProfilePhotoChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const nextPhoto = typeof reader.result === 'string' ? reader.result : '';
+      if (!nextPhoto) return;
+      setProfilePhoto(nextPhoto);
+      localStorage.setItem(PROFILE_PHOTO_KEY, nextPhoto);
+      window.dispatchEvent(new Event('bettercanvas-profile-photo-updated'));
+    };
+    reader.readAsDataURL(file);
+    event.currentTarget.value = '';
+  };
 
   return (
     <>
@@ -55,12 +84,19 @@ export function AccountPage() {
           }}
         >
           <div className="flex items-center gap-5 mb-6">
-            <div
-              className="w-20 h-20 rounded-full flex items-center justify-center"
-              style={{ backgroundColor: 'var(--dashboard-info)' }}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="w-20 h-20 rounded-full flex items-center justify-center overflow-hidden focus:outline-none focus:ring-2"
+              style={{ backgroundColor: profilePhoto ? 'var(--dashboard-card-bg)' : 'var(--dashboard-info)' }}
+              aria-label="Upload profile picture"
             >
-              <User className="w-10 h-10 text-white" />
-            </div>
+              {profilePhoto ? (
+                <img src={profilePhoto} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                <User className="w-10 h-10 text-white" />
+              )}
+            </button>
             <div>
               <h2 className="text-2xl font-bold" style={{ color: 'var(--dashboard-text-primary)' }}>
                 {profile.name}
@@ -68,8 +104,23 @@ export function AccountPage() {
               <p className="text-base" style={{ color: 'var(--dashboard-text-secondary)' }}>
                 {profile.email}
               </p>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="mt-2 text-sm font-medium underline-offset-2 hover:underline focus:outline-none focus:ring-2 rounded"
+                style={{ color: 'var(--dashboard-info)' }}
+              >
+                {profilePhoto ? 'Change profile picture' : 'Add profile picture'}
+              </button>
             </div>
           </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={onProfilePhotoChange}
+          />
 
           <div className="grid grid-cols-3 gap-4">
             {[

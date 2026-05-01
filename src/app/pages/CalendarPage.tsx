@@ -1,11 +1,12 @@
 import { TaskCard } from '../components/TaskCard';
 import { CalendarWidget } from '../components/CalendarWidget';
 import { useEffect, useState } from 'react';
-import { useOutletContext } from 'react-router';
+import { useOutletContext, useSearchParams } from 'react-router';
 import { getCalendarTasks, patchTask } from '../../lib/api';
 
 export function CalendarPage() {
-  const { openCreateEntry, reloadKey } = useOutletContext<{ openCreateEntry: (date?: string) => void; reloadKey: number }>();
+  const { openCreateEntry, reloadKey } = useOutletContext<{ openCreateEntry: (date?: string, hasTask?: boolean) => void; reloadKey: number }>();
+  const [searchParams] = useSearchParams();
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState('');
 
@@ -17,6 +18,16 @@ export function CalendarPage() {
   useEffect(() => {
     load();
   }, [reloadKey]);
+
+  useEffect(() => {
+    if (!data) return;
+    const date = searchParams.get('date');
+    if (!date) return;
+    const section = document.getElementById(`calendar-day-${date}`);
+    if (section) {
+      section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [data, searchParams]);
 
   const onToggleTask = async (checked: boolean, id?: string) => {
     if (!id) return;
@@ -53,7 +64,7 @@ export function CalendarPage() {
                 <p className="text-lg">No entries yet. Click + to add one.</p>
               </div>
             ) : data.groups.map((group: any) => (
-              <section key={group.dateKey}>
+              <section key={group.dateKey} id={`calendar-day-${group.dateKey}`}>
                 <h3 className="text-xl font-semibold mb-4 px-2" style={{ color: 'var(--dashboard-text-primary)' }}>
                   {group.dateLabel}
                 </h3>
