@@ -49,6 +49,7 @@ BetterCanvas is a full-stack redesign of a student LMS dashboard focused on redu
 Install dependencies:
 
 ```bash
+cd BetterCanvas
 npm install
 npm --prefix server install
 ```
