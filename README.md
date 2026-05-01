@@ -49,6 +49,7 @@ BetterCanvas is a full-stack redesign of a student LMS dashboard focused on redu
 Install dependencies:
 
 ```bash
+cd BetterCanvas
 npm install
 npm --prefix server install
 ```
@@ -66,6 +67,10 @@ On macOS/Linux:
 cp .env.example .env
 cp server/.env.example server/.env
 ```
+
+## DEMO
+- https://www.loom.com/share/700af9e8e2514f5194d1bb44ac3e85ed
+
 
 ## Environment Variables
 
@@ -117,16 +122,3 @@ Notes:
 Demo login:
 - Email: `student@university.edu`
 - Password: `password123`
-
-## Smoke Test
-
-With backend running:
-
-```bash
-npm --prefix server run smoke
-```
-
-## requirements.txt Note
-
-This repo is a Node.js project. A `requirements.txt` file is included only as a placeholder, and there are no Python dependencies required to run the app.
-  
