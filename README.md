@@ -85,16 +85,10 @@ Backend (`server/.env`):
 
 ## Run the App
 
-Frontend only:
+Seed the database:
 
 ```bash
-npm run dev
-```
-
-Backend only:
-
-```bash
-npm run dev:server
+npm run seed
 ```
 
 Frontend + backend together:
